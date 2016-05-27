@@ -429,6 +429,7 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
       }
     };
 
+//probably dont need this...
     this.peerConnection.onnegotiationneeded = function (todo) {
       self.logger.log('xxxx', todo);
       self.logger.log('onnegotiationneeded', todo);
@@ -516,6 +517,9 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
         console.log("onSetLocalDescriptionSuccess");
 
         console.log("constraints=", constraints);
+        console.log("SDP=", pc.localDescription.sdp);
+        self.startIceCheckingTimer();
+
         //TODO _ how can we tell we don't need more ICE candidates?
         //TODO _ total bodge.....
         //todo if we can fix this can we just use setDescription???
