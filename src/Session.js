@@ -609,10 +609,6 @@ Session.prototype = {
     options = Object.create(Session.desugar(options));
     SIP.Utils.optionsOverride(options, 'media', 'mediaConstraints', true, this.logger, this.ua.configuration.media);
 
-    if (options.media) {
-      this.mediaHint = options.media;
-    }
-
     var
       self = this,
       extraHeaders = (options.extraHeaders || []).slice(),
@@ -640,23 +636,70 @@ Session.prototype = {
     extraHeaders.push('Content-Type: application/sdp');
 
     this.receiveResponse = this.receiveReinviteResponse;
-    //REVISIT
-    this.mediaHandler.getDescription(self.mediaHint)
-    .then(mangle)
-    .then(
-      function(body){
-        self.dialog.sendRequest(self, SIP.C.INVITE, {
-          extraHeaders: extraHeaders,
-          body: body
-        });
-      },
-      function() {
-        if (self.isReadyToReinvite()) {
-          self.onReadyToReinvite();
-        }
-        self.reinviteFailed();
+
+    console.log("this.mediaHint=", this.mediaHint);
+    console.log("options=", options);
+    //TODO_ what if we add one andremove one???
+    //TODO- this can be better....
+    console.log("audio: ", options.media.constraints.audio, this.mediaHint.constraints.audio);
+    if (!options.media.constraints.audio && this.mediaHint.constraints.audio) {
+      console.log("Removing audio");
+      this.mediaHint.constraints.audio = false;
+    }
+    console.log("video: ", options.media.constraints.video, this.mediaHint.constraints.video);
+    if (!options.media.constraints.video && this.mediaHint.constraints.video) {
+      console.log("Removing video");
+
+      this.mediaHandler.removeStreams(this.mediaHandler.getLocalStreams()).then(function (e) {
+        console.log("removing streams - e=", e);
+        console.log("1 - mediaHint=", self.mediaHint);
+        self.mediaHint.constraints.video = false;
+
+
+        self.mediaHandler.createOfferOrAnswer(self.mediaHint)
+        .then(mangle)
+        .then(
+          function(body){
+            console.log("creted offer/answrer");
+            self.dialog.sendRequest(self, SIP.C.INVITE, {
+              extraHeaders: extraHeaders,
+              body: body
+            });
+          },
+          function() {
+            console.log("FAILED");
+            if (self.isReadyToReinvite()) {
+              self.onReadyToReinvite();
+            }
+            self.reinviteFailed();
+          }
+        );
+      });
+
+    } else {
+      if (options.media) {
+        this.mediaHint = options.media;
       }
-    );
+
+
+      //REVISIT
+      this.mediaHandler.getDescription(self.mediaHint)
+      .then(mangle)
+      .then(
+        function(body){
+          self.dialog.sendRequest(self, SIP.C.INVITE, {
+            extraHeaders: extraHeaders,
+            body: body
+          });
+        },
+        function() {
+          if (self.isReadyToReinvite()) {
+            self.onReadyToReinvite();
+          }
+          self.reinviteFailed();
+        }
+      );
+    }
   },
 
   receiveRequest: function (request) {
