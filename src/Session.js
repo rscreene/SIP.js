@@ -452,6 +452,7 @@ Session.prototype = {
    * Mute
    */
   mute: function(options) {
+    console.log("Options=", options);
     var ret = this.mediaHandler.mute(options);
     if (ret) {
       this.onmute(ret);
@@ -472,6 +473,8 @@ Session.prototype = {
    * Hold
    */
   hold: function(options) {
+
+    console.log("HOLD+", options);
 
     if (this.status !== C.STATUS_WAITING_FOR_ACK && this.status !== C.STATUS_CONFIRMED) {
       throw new SIP.Exceptions.InvalidStateError(this.status);
@@ -605,6 +608,7 @@ Session.prototype = {
   },
 
   sendReinvite: function(options) {
+    console.log("optonssss=", options);
     options = options || {};
     options = Object.create(Session.desugar(options));
     SIP.Utils.optionsOverride(options, 'media', 'mediaConstraints', true, this.logger, this.ua.configuration.media);
@@ -650,13 +654,40 @@ Session.prototype = {
     if (!options.media.constraints.video && this.mediaHint.constraints.video) {
       console.log("Removing video");
 
+
+      console.log("BEFORE ALL TRACKS");
+      console.log("- LOCAL");
+      self.mediaHandler.getLocalStreams().forEach(function (stream) {
+        console.log("getAllTracks=", stream.getTracks());
+      });
+      console.log("- REMOTE");
+      self.mediaHandler.getRemoteStreams().forEach(function (stream) {
+        console.log("getAllTracks=", stream.getTracks());
+      });
+
       this.mediaHandler.removeStreams(this.mediaHandler.getLocalStreams()).then(function (e) {
         console.log("removing streams - e=", e);
         console.log("1 - mediaHint=", self.mediaHint);
         self.mediaHint.constraints.video = false;
 
+        console.log("AFTER ALL TRACKS");
+        console.log("- LOCAL");
+        self.mediaHandler.getLocalStreams().forEach(function (stream) {
+          console.log("getAllTracks=", stream.getTracks());
+        });
+        console.log("- REMOTE");
+        self.mediaHandler.getRemoteStreams().forEach(function (stream) {
+          console.log("getAllTracks=", stream.getTracks());
+        });
 
-        self.mediaHandler.createOfferOrAnswer(self.mediaHint)
+        delete self.mediaHint.constraints.video;
+        console.log("mediaHint=", self.mediaHint);
+        var xx = {
+          offerToReceiveAudio: self.mediaHint.constraints.audio,
+          offerToReceiveVideo: self.mediaHint.constraints.video,
+        };
+        console.log("xx=", xx);
+        self.mediaHandler.createOfferOrAnswer(xx)
         .then(mangle)
         .then(
           function(body){
