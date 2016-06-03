@@ -104,7 +104,6 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
           self.logger.log('acquired local media streams');
           self.localMedia = streams;
           self.session.connecting();
-          console.log("streams=", streams);
           return streams;
         }, function acquireFailed(err) {
           self.logger.error('unable to acquire streams');
@@ -132,9 +131,7 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
           self.emit('dataChannel', self.dataChannel);
         }
 
-        console.log("rendering");
         self.render();
-        console.log("self.RTCConstraints=", self.RTCConstraints);
         return self.createOfferOrAnswer(self.RTCConstraints);
       })
     ;
@@ -407,13 +404,9 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
     };
 
     this.startIceCheckingTimer = function () {
-      console.trace("startIceCheckingTimer");
       if (!self.iceCheckingTimer) {
-        console.log("Starting timer at", Date.now(), config.iceCheckingTimeout);
         self.iceCheckingTimer = SIP.Timers.setTimeout(function() {
-          console.log("Expired timer at", Date.now(), config.iceCheckingTimeout);
           self.logger.log('RTCIceChecking Timeout Triggered after '+config.iceCheckingTimeout+' milliseconds');
-          self.iceCheckingTimer = null;
           self.onIceCompleted.resolve(this);
         }.bind(this.peerConnection), config.iceCheckingTimeout);
       }
@@ -429,13 +422,6 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
       }
     };
 
-//probably dont need this...
-    this.peerConnection.onnegotiationneeded = function (todo) {
-      self.logger.log('xxxx', todo);
-      self.logger.log('onnegotiationneeded', todo);
-      self.startIceCheckingTimer();
-    };
-
     this.peerConnection.onicegatheringstatechange = function () {
       self.logger.log('RTCIceGatheringState changed: ' + this.iceGatheringState);
       if (this.iceGatheringState === 'gathering') {
@@ -446,10 +432,9 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
       }
     };
 
-    this.peerConnection.oniceconnectionstatechange = function(e) {  //need e for commented out case
+    this.peerConnection.oniceconnectionstatechange = function() {  //need e for commented out case
       var stateEvent;
 
-      self.logger.log('oniceconnectionstatechange', e);
       if (this.iceConnectionState === 'checking') {
         self.startIceCheckingTimer();
       }
@@ -508,30 +493,17 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
     self.ready = false;
     methodName = self.hasOffer('remote') ? 'createAnswer' : 'createOffer';
 
-    console.log("createOfferOrAnswer xxxxxxx");
     self.initIceCompleted();
 
     return SIP.Utils.promisify(pc, methodName, true)(constraints)
       .then(SIP.Utils.promisify(pc, 'setLocalDescription'))
       .then(function onSetLocalDescriptionSuccess() {
-        console.log("onSetLocalDescriptionSuccess");
 
-        console.log("constraints=", constraints);
-        console.log("SDP=", pc.localDescription.sdp);
         self.startIceCheckingTimer();
 
-        //TODO _ how can we tell we don't need more ICE candidates?
-        //TODO _ total bodge.....
-        //todo if we can fix this can we just use setDescription???
-        //TODO _ shouldn't we just time out??
-//        if (constraints.constraints && constraints.constraints.audio && !constraints.constraints.video) {
-//          return SIP.Utils.Promise.resolve();
-//        } else {
-          return self.onIceCompleted.promise;
-//        }
+        return self.onIceCompleted.promise;
       })
       .then(function readySuccess () {
-        console.log("readySuccess");
         var sdp = pc.localDescription.sdp;
 
         sdp = SIP.Hacks.Chrome.needsExplicitlyInactiveSDP(sdp);
@@ -570,24 +542,33 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
     return SIP.Utils.Promise.resolve();
   }},
 
-//TODO_ not a stream anymore
-  removeStreams: {writable: true, value: function removeStreams (streams) {
-    try {
-      streams = [].concat(streams);
-      streams.forEach(function (stream) {
+  //TODO - maybe remove all tracks relating to source (pass as argument)
+  removeStreams: {writable: true, value: function removeStreams () {
+    var localStreams = this.getLocalStreams();
+    var remoteStreams = this.getRemoteStreams();
+    var self = this;
 
-        console.log("stream=", stream);
-        //TODO - how should we do this??
-        var tr = stream.getVideoTracks()[0];
-        console.log("tr=", tr);
-        stream.removeTrack(tr);
+    function remove(streams) {
+      try {
+        streams = [].concat(streams);
+        streams.forEach(function (stream) {
 
-      }, this);
-    } catch(e) {
-      this.logger.error('error removing stream');
-      this.logger.error(e);
-      return SIP.Utils.Promise.reject(e);
+          console.log("stream=", stream);
+          //TODO - not just [0]
+          var tr = stream.getVideoTracks()[0];
+          console.log("tr=", tr);
+          stream.removeTrack(tr);
+
+        }, self);
+
+      } catch(e) {
+        self.logger.error('error removing stream');
+        self.logger.error(e);
+        return SIP.Utils.Promise.reject(e);
+      }
     }
+    remove(localStreams);
+    remove(remoteStreams);
 
     return SIP.Utils.Promise.resolve();
   }},

@@ -452,7 +452,6 @@ Session.prototype = {
    * Mute
    */
   mute: function(options) {
-    console.log("Options=", options);
     var ret = this.mediaHandler.mute(options);
     if (ret) {
       this.onmute(ret);
@@ -473,8 +472,6 @@ Session.prototype = {
    * Hold
    */
   hold: function(options) {
-
-    console.log("HOLD+", options);
 
     if (this.status !== C.STATUS_WAITING_FOR_ACK && this.status !== C.STATUS_CONFIRMED) {
       throw new SIP.Exceptions.InvalidStateError(this.status);
@@ -608,7 +605,6 @@ Session.prototype = {
   },
 
   sendReinvite: function(options) {
-    console.log("optonssss=", options);
     options = options || {};
     options = Object.create(Session.desugar(options));
     SIP.Utils.optionsOverride(options, 'media', 'mediaConstraints', true, this.logger, this.ua.configuration.media);
@@ -641,64 +637,36 @@ Session.prototype = {
 
     this.receiveResponse = this.receiveReinviteResponse;
 
-    console.log("this.mediaHint=", this.mediaHint);
-    console.log("options=", options);
-    //TODO_ what if we add one andremove one???
-    //TODO- this can be better....
-    console.log("audio: ", options.media.constraints.audio, this.mediaHint.constraints.audio);
+    /*  TODO - we need to compile a list of removed sources and added sources by reference
+        to what is already being delivered.
+    */
     if (!options.media.constraints.audio && this.mediaHint.constraints.audio) {
       console.log("Removing audio");
       this.mediaHint.constraints.audio = false;
     }
-    console.log("video: ", options.media.constraints.video, this.mediaHint.constraints.video);
     if (!options.media.constraints.video && this.mediaHint.constraints.video) {
       console.log("Removing video");
 
-
-      console.log("BEFORE ALL TRACKS");
-      console.log("- LOCAL");
-      self.mediaHandler.getLocalStreams().forEach(function (stream) {
-        console.log("getAllTracks=", stream.getTracks());
-      });
-      console.log("- REMOTE");
-      self.mediaHandler.getRemoteStreams().forEach(function (stream) {
-        console.log("getAllTracks=", stream.getTracks());
-      });
-
-      this.mediaHandler.removeStreams(this.mediaHandler.getLocalStreams()).then(function (e) {
-        console.log("removing streams - e=", e);
-        console.log("1 - mediaHint=", self.mediaHint);
+      //TODO - we might want pass source to removeStreams.....
+      this.mediaHandler.removeStreams().then(function (e) {
         self.mediaHint.constraints.video = false;
 
-        console.log("AFTER ALL TRACKS");
-        console.log("- LOCAL");
-        self.mediaHandler.getLocalStreams().forEach(function (stream) {
-          console.log("getAllTracks=", stream.getTracks());
-        });
-        console.log("- REMOTE");
-        self.mediaHandler.getRemoteStreams().forEach(function (stream) {
-          console.log("getAllTracks=", stream.getTracks());
-        });
-
-        delete self.mediaHint.constraints.video;
-        console.log("mediaHint=", self.mediaHint);
         var xx = {
-          offerToReceiveAudio: self.mediaHint.constraints.audio,
-          offerToReceiveVideo: self.mediaHint.constraints.video,
+          offerToReceiveAudio: !!self.mediaHint.constraints.audio,
+          offerToReceiveVideo: !!self.mediaHint.constraints.video,
         };
-        console.log("xx=", xx);
+
+        //NB. do not call getDescription() if we're just removing
         self.mediaHandler.createOfferOrAnswer(xx)
         .then(mangle)
         .then(
           function(body){
-            console.log("creted offer/answrer");
             self.dialog.sendRequest(self, SIP.C.INVITE, {
               extraHeaders: extraHeaders,
               body: body
             });
           },
           function() {
-            console.log("FAILED");
             if (self.isReadyToReinvite()) {
               self.onReadyToReinvite();
             }
@@ -712,8 +680,6 @@ Session.prototype = {
         this.mediaHint = options.media;
       }
 
-
-      //REVISIT
       this.mediaHandler.getDescription(self.mediaHint)
       .then(mangle)
       .then(
