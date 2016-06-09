@@ -407,6 +407,7 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
       if (!self.iceCheckingTimer) {
         self.iceCheckingTimer = SIP.Timers.setTimeout(function() {
           self.logger.log('RTCIceChecking Timeout Triggered after '+config.iceCheckingTimeout+' milliseconds');
+          self.iceCheckingTimer = null;
           self.onIceCompleted.resolve(this);
         }.bind(this.peerConnection), config.iceCheckingTimeout);
       }

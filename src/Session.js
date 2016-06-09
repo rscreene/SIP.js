@@ -648,7 +648,7 @@ Session.prototype = {
       console.log("Removing video");
 
       //TODO - we might want pass source to removeStreams.....
-      this.mediaHandler.removeStreams().then(function (e) {
+      this.mediaHandler.removeStreams().then(function () {
         self.mediaHint.constraints.video = false;
 
         var xx = {
