@@ -640,12 +640,10 @@ Session.prototype = {
     /*  TODO - we need to compile a list of removed sources and added sources by reference
         to what is already being delivered.
     */
-    if (!options.media.constraints.audio && this.mediaHint.constraints.audio) {
-      console.log("Removing audio");
+    if (options.media && options.media.constraints && !options.media.constraints.audio && this.mediaHint.constraints.audio) {
       this.mediaHint.constraints.audio = false;
     }
-    if (!options.media.constraints.video && this.mediaHint.constraints.video) {
-      console.log("Removing video");
+    if (options.media && options.media.constraints && !options.media.constraints.video && this.mediaHint.constraints.video) {
 
       //TODO - we might want pass source to removeStreams.....
       this.mediaHandler.removeStreams().then(function () {

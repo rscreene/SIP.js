@@ -554,10 +554,8 @@ MediaHandler.prototype = Object.create(SIP.MediaHandler.prototype, {
         streams = [].concat(streams);
         streams.forEach(function (stream) {
 
-          console.log("stream=", stream);
           //TODO - not just [0]
           var tr = stream.getVideoTracks()[0];
-          console.log("tr=", tr);
           stream.removeTrack(tr);
 
         }, self);

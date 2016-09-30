@@ -1834,7 +1834,7 @@ describe('InviteClientContext', function() {
       expect(InviteClientContext.ua.sessions[InviteClientContext.id]).toBe(InviteClientContext);
     });
 
-    it('calls mediaHandler.getDescription async and returns this on success', function() {
+    it('calls mediaHandler.getDescription async and returns this on success', function(done) {
       var callback, s;
 
       spyOn(SIP.WebRTC, 'getUserMedia').and.callThrough();
